@@ -9,6 +9,8 @@ on:
 jobs:
   update-docs:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Allow pushing commits back to repository
 
     steps:
     - name: Checkout repository
