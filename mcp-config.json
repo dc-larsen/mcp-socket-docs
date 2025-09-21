@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "socket-docs": {
+      "command": "node",
+      "args": ["src/index.js"],
+      "cwd": ".",
+      "env": {}
+    }
+  }
+}

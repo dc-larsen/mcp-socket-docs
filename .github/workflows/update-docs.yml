@@ -1,0 +1,54 @@
+name: Update Socket.dev Documentation
+
+on:
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  update-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Run documentation scraper
+      run: npm run scrape
+
+    - name: Check for changes
+      id: changes
+      run: |
+        if git diff --quiet docs/socket-docs.json; then
+          echo "No changes detected"
+          echo "has_changes=false" >> $GITHUB_OUTPUT
+        else
+          echo "Changes detected in documentation"
+          echo "has_changes=true" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Commit and push changes
+      if: steps.changes.outputs.has_changes == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add docs/socket-docs.json
+        git commit -m "📚 Update Socket.dev documentation - $(date +'%Y-%m-%d')"
+        git push
+
+    - name: Create summary
+      run: |
+        if [ "${{ steps.changes.outputs.has_changes }}" == "true" ]; then
+          echo "✅ Documentation updated successfully" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "ℹ️ No changes detected in documentation" >> $GITHUB_STEP_SUMMARY
+        fi
