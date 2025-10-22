@@ -145,10 +145,10 @@ class SocketDocsServer {
       );
     }
 
-    if (!url.startsWith("https://docs.socket.dev")) {
+    if (!url.startsWith("https://docs.socket.dev") && !url.startsWith("https://github.com")) {
       throw new McpError(
         ErrorCode.InvalidParams,
-        "URL must be from docs.socket.dev domain"
+        "URL must be from docs.socket.dev or github.com domain"
       );
     }
 

@@ -5,6 +5,174 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+class GitHubScraper {
+  constructor() {
+    this.repositories = [
+      'SocketDev/socket-sdk-python'
+    ];
+    this.pages = [];
+    this.chunks = [];
+  }
+
+  async scrapeRepositories() {
+    console.log('Starting GitHub repository README scraping...');
+
+    let successCount = 0;
+    for (let i = 0; i < this.repositories.length; i++) {
+      const repo = this.repositories[i];
+      console.log(`[${i+1}/${this.repositories.length}] Scraping GitHub repo: ${repo}`);
+
+      const success = await this.scrapeReadme(repo);
+      if (success) successCount++;
+
+      // Be nice to GitHub's API
+      await this.delay(100);
+    }
+
+    console.log(`GitHub scraping complete: ${successCount}/${this.repositories.length} successful`);
+
+    return {
+      pages: this.pages,
+      chunks: this.chunks,
+      metadata: {
+        totalRepos: this.repositories.length,
+        successfulScrapes: successCount
+      }
+    };
+  }
+
+  async scrapeReadme(repository) {
+    try {
+      const apiUrl = `https://api.github.com/repos/${repository}/readme`;
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Socket-MCP-Server/1.0.0'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`  ❌ Failed to fetch README: ${response.status}`);
+        return false;
+      }
+
+      const data = await response.json();
+
+      // Decode base64 content
+      const content = Buffer.from(data.content, 'base64').toString('utf-8');
+
+      // Extract title from first heading or use repo name
+      const title = this.extractTitle(content, repository);
+
+      if (content && title) {
+        const url = `https://github.com/${repository}`;
+        const page = {
+          url,
+          title: `${repository.split('/')[1]} - ${title}`,
+          content: content,
+          lastUpdated: new Date().toISOString().split('T')[0]
+        };
+
+        this.pages.push(page);
+        this.createChunks(page);
+        console.log(`  ✅ Success: "${title.substring(0, 50)}..."`);
+        return true;
+      } else {
+        console.log(`  ⚠️  No content: Missing title or content`);
+        return false;
+      }
+
+    } catch (error) {
+      console.error(`  ❌ Error scraping ${repository}: ${error.message}`);
+      return false;
+    }
+  }
+
+  extractTitle(content, repository) {
+    // Try to extract title from first markdown heading
+    const headingMatch = content.match(/^#\s+(.+)$/m);
+    if (headingMatch) {
+      return headingMatch[1].trim();
+    }
+
+    // Fallback to repository name
+    const repoName = repository.split('/')[1];
+    return repoName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  createChunks(page) {
+    const content = page.content;
+    const maxChunkSize = 1000;
+
+    if (content.length <= maxChunkSize) {
+      this.chunks.push({
+        url: page.url,
+        title: page.title,
+        content: content,
+        lastUpdated: page.lastUpdated,
+        section: 'main'
+      });
+      return;
+    }
+
+    // Split by markdown sections (headers) first, then by size if needed
+    const sections = content.split(/(?=^#{1,6}\s)/m).filter(section => section.trim());
+
+    let chunkIndex = 0;
+    for (const section of sections) {
+      if (section.length <= maxChunkSize) {
+        this.chunks.push({
+          url: `${page.url}#chunk-${chunkIndex}`,
+          title: page.title,
+          content: section.trim(),
+          lastUpdated: page.lastUpdated,
+          section: `chunk-${chunkIndex}`
+        });
+        chunkIndex++;
+      } else {
+        // Split large sections by sentences
+        const sentences = section.split(/[.!?]+/);
+        let currentChunk = '';
+
+        for (const sentence of sentences) {
+          const trimmedSentence = sentence.trim();
+          if (!trimmedSentence) continue;
+
+          if (currentChunk.length + trimmedSentence.length > maxChunkSize && currentChunk) {
+            this.chunks.push({
+              url: `${page.url}#chunk-${chunkIndex}`,
+              title: page.title,
+              content: currentChunk.trim(),
+              lastUpdated: page.lastUpdated,
+              section: `chunk-${chunkIndex}`
+            });
+
+            currentChunk = trimmedSentence;
+            chunkIndex++;
+          } else {
+            currentChunk += (currentChunk ? '. ' : '') + trimmedSentence;
+          }
+        }
+
+        if (currentChunk.trim()) {
+          this.chunks.push({
+            url: `${page.url}#chunk-${chunkIndex}`,
+            title: page.title,
+            content: currentChunk.trim(),
+            lastUpdated: page.lastUpdated,
+            section: `chunk-${chunkIndex}`
+          });
+          chunkIndex++;
+        }
+      }
+    }
+  }
+
+  async delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+}
+
 class SocketDocsScraper {
   constructor() {
     this.baseUrl = 'https://docs.socket.dev';
@@ -47,11 +215,22 @@ class SocketDocsScraper {
       }
     }
 
+    // Scrape GitHub repositories
+    console.log('\n=== STARTING GITHUB SCRAPING ===');
+    const githubScraper = new GitHubScraper();
+    const githubResults = await githubScraper.scrapeRepositories();
+
+    // Combine results
+    this.pages.push(...githubResults.pages);
+    this.chunks.push(...githubResults.chunks);
+
     console.log(`\n=== SCRAPING COMPLETE ===`);
-    console.log(`Total URLs attempted: ${validUrls.length}`);
-    console.log(`Successful scrapes: ${successCount}`);
-    console.log(`Pages scraped: ${this.pages.length}`);
-    console.log(`Chunks created: ${this.chunks.length}`);
+    console.log(`Documentation URLs attempted: ${validUrls.length}`);
+    console.log(`Documentation successful scrapes: ${successCount}`);
+    console.log(`GitHub repos attempted: ${githubResults.metadata.totalRepos}`);
+    console.log(`GitHub successful scrapes: ${githubResults.metadata.successfulScrapes}`);
+    console.log(`Total pages scraped: ${this.pages.length}`);
+    console.log(`Total chunks created: ${this.chunks.length}`);
 
     return {
       pages: this.pages,
@@ -62,7 +241,9 @@ class SocketDocsScraper {
         totalChunks: this.chunks.length,
         sitemapUrlsFound: sitemapUrls.length,
         validUrlsAttempted: validUrls.length,
-        successfulScrapes: successCount
+        successfulScrapes: successCount,
+        githubRepos: githubResults.metadata.totalRepos,
+        githubSuccessful: githubResults.metadata.successfulScrapes
       }
     };
   }
@@ -315,4 +496,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-export { SocketDocsScraper };
+export { SocketDocsScraper, GitHubScraper };

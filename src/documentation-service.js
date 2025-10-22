@@ -120,6 +120,22 @@ export class DocumentationService {
       score += 20;
     }
 
+    // Boost for SDK-related content (especially relevant for GitHub repos)
+    if (queryLower.includes('sdk') && (content.includes('sdk') || title.includes('sdk'))) {
+      score += 30;
+    }
+
+    // Boost for Python-related content
+    if (queryLower.includes('python') && (content.includes('python') || title.includes('python'))) {
+      score += 25;
+    }
+
+    // Boost for GitHub repository content when searching for installation, examples, etc.
+    if ((queryLower.includes('install') || queryLower.includes('example') || queryLower.includes('usage')) &&
+        (content.includes('github.com') || title.includes('github'))) {
+      score += 15;
+    }
+
     return score;
   }
 
