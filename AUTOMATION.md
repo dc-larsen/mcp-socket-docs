@@ -31,10 +31,10 @@ git add . && git commit -m "Initial setup" && git push
 crontab -e
 
 # Add this line for weekly updates (Sundays at 2 AM)
-0 2 * * 0 /Users/davidlarsen/Desktop/projects/mcp-socket-docs/scripts/update-docs.sh
+0 2 * * 0 /path/to/mcp-socket-docs/scripts/update-docs.sh
 
 # Or for daily updates at 3 AM
-0 3 * * * /Users/davidlarsen/Desktop/projects/mcp-socket-docs/scripts/update-docs.sh
+0 3 * * * /path/to/mcp-socket-docs/scripts/update-docs.sh
 ```
 
 ### 3. Manual Updates
@@ -54,7 +54,7 @@ npm run docs:stats
 ### 4. Launchd (macOS Service)
 **Native macOS scheduling**
 
-Create `/Users/davidlarsen/Library/LaunchAgents/com.socket.docs.plist`:
+Create `~/Library/LaunchAgents/com.socket.docs.plist`:
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -64,7 +64,7 @@ Create `/Users/davidlarsen/Library/LaunchAgents/com.socket.docs.plist`:
     <string>com.socket.docs</string>
     <key>ProgramArguments</key>
     <array>
-        <string>/Users/davidlarsen/Desktop/projects/mcp-socket-docs/scripts/update-docs.sh</string>
+        <string>/path/to/mcp-socket-docs/scripts/update-docs.sh</string>
     </array>
     <key>StartCalendarInterval</key>
     <dict>

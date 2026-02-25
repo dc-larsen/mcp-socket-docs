@@ -41,7 +41,7 @@ npm run scrape
 
 ### MCP Server Not Working
 1. Check if server is running: `npm start`
-2. Verify config in: `/Users/davidlarsen/Library/Application Support/Claude/claude_desktop_config.json`
+2. Verify config in: `~/Library/Application Support/Claude/claude_desktop_config.json`
 3. Restart Claude Desktop
 
 ### Documentation Issues
@@ -58,7 +58,7 @@ npm run scrape
 - **MCP Server**: `src/index.js`
 - **Documentation Data**: `docs/socket-docs.json`
 - **Scraper**: `scripts/scraper.js`
-- **Claude Config**: `/Users/davidlarsen/Library/Application Support/Claude/claude_desktop_config.json`
+- **Claude Config**: `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 ## 🎯 Project Context
 This is a Socket.dev documentation MCP server that:
